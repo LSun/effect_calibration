@@ -1,0 +1,30 @@
+library(ggplot2)
+library(reshape2)
+library(tidyr)
+
+lfsr <- read.csv("lfsr_mat.csv", header=T)
+lfsr_0.05 <- apply(lfsr, 1, function(x) {mean(x[5:length(x)]<=0.05, na.rm=TRUE)})
+lfsr_0.20 <- apply(lfsr, 1, function(x) {mean(x[5:length(x)]<=0.20, na.rm=TRUE)})
+lfsr_0.50 <- apply(lfsr, 1, function(x) {mean(x[5:length(x)]<=0.50, na.rm=TRUE)})
+lfsr_summary = cbind(lfsr[,1:4], lfsr_0.05, lfsr_0.20, lfsr_0.50)
+colnames(lfsr_summary)[5:7] = c("0.05", "0.20", "0.50")
+
+pdf("~/lfsr_muscle.pdf")
+nullpi_seq <- unique(lfsr_summary$nullpi)
+nsamp_seq <- unique(lfsr_summary$Nsamp)
+dummy_dat <- expand.grid(nullpi_seq, nsamp_seq)
+colnames(dummy_dat) <- c("nullpi", "Nsamp")
+
+name_vec <- colnames(lfsr_summary)
+colnames(lfsr_summary) <- gsub("pi0hat_", "", x = name_vec)
+long_dat <- melt(lfsr_summary, id.vars = c("nullpi", "Nsamp"),
+                 measure.vars = colnames(lfsr_summary)[5:ncol(lfsr_summary)])
+colnames(long_dat)[3] = "threshold"
+p <- ggplot(data = long_dat, mapping = aes(x = threshold, y = value, fill = threshold))
+p <- p + facet_grid(nullpi~Nsamp) + ylab("proportion of lfsr")
+p <- p + geom_boxplot(size = 0.4, outlier.size = 0.4)
+p <- p + geom_hline(data = dummy_dat, aes(yintercept = (1-nullpi)/(1-nullpi/2)), lty = 2, color = "red", lwd = 1)
+p <- p + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.3))
+p <- p + ggtitle("Proportions of lfsr lower than different thresholds")
+print(p)
+dev.off()
